@@ -99,6 +99,7 @@
     <Compile Include="CodeGen.cs" />
     <Compile Include="CodeFile.cs" />
     <Compile Include="CodeGenDS.cs" />
+    <Compile Include="CodeGenDSImperative.cs" />
     <Compile Include="CodePoint.cs" />
     <Compile Include="CompilerOptions.cs" />
     <Compile Include="Core.cs" />
