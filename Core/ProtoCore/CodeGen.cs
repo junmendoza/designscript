@@ -89,7 +89,8 @@ namespace ProtoCore
 
 
         // Contains the list of Nodes in an identifier list
-        protected List<ProtoCore.AST.AssociativeAST.AssociativeNode> ssaPointerList;
+        protected List<ProtoCore.AST.Node> ssaPointerList;
+        //protected List<ProtoCore.AST.AssociativeAST.AssociativeNode> ssaPointerList;
 
         // The first graphnode of the SSA'd identifier
         protected ProtoCore.AssociativeGraph.GraphNode firstSSAGraphNode = null;
@@ -151,7 +152,8 @@ namespace ProtoCore
                 }
             }
 
-            ssaPointerList = new List<AST.AssociativeAST.AssociativeNode>();
+            //ssaPointerList = new List<AST.AssociativeAST.AssociativeNode>();
+            ssaPointerList = new List<AST.Node>();
         }
 
         protected ProtoCore.DSASM.AddressType GetOpType(ProtoCore.PrimitiveType type)
@@ -2830,7 +2832,7 @@ namespace ProtoCore
         }
 
 
-        private ProtoCore.AST.AssociativeAST.IdentifierListNode BuildIdentifierList(List<ProtoCore.AST.AssociativeAST.AssociativeNode> astIdentList)
+        private ProtoCore.AST.AssociativeAST.IdentifierListNode BuildAssociativeIdentifierList(List<ProtoCore.AST.Node> astIdentList)
         {
             // TODO Jun: Replace this condition or handle this case prior to this call
             if (astIdentList.Count < 2)
@@ -2842,8 +2844,12 @@ namespace ProtoCore
 
             // Build the first ident list
             identList = new AST.AssociativeAST.IdentifierListNode();
-            identList.LeftNode = astIdentList[0];
-            identList.RightNode = astIdentList[1];
+
+            Validity.Assert(astIdentList[0] is ProtoCore.AST.AssociativeAST.AssociativeNode);
+            Validity.Assert(astIdentList[1] is ProtoCore.AST.AssociativeAST.AssociativeNode);
+
+            identList.LeftNode = astIdentList[0] as ProtoCore.AST.AssociativeAST.AssociativeNode;
+            identList.RightNode = astIdentList[1] as ProtoCore.AST.AssociativeAST.AssociativeNode;
 
             // Build the rest
             for (int n = 2; n < astIdentList.Count; ++n)
@@ -2855,7 +2861,9 @@ namespace ProtoCore
                 // Build a new ident and assign it the prev identlist and the next identifier
                 identList = new AST.AssociativeAST.IdentifierListNode();
                 identList.LeftNode = subIdentList;
-                identList.RightNode = astIdentList[n];
+
+                Validity.Assert(astIdentList[n] is ProtoCore.AST.AssociativeAST.AssociativeNode);
+                identList.RightNode = astIdentList[n] as ProtoCore.AST.AssociativeAST.AssociativeNode;
             }
 
             return identList;
@@ -2866,7 +2874,7 @@ namespace ProtoCore
 	        AssociativeGraph.GraphNode dependent = new AssociativeGraph.GraphNode();
 
             // Push all dependent pointers
-            ProtoCore.AST.AssociativeAST.IdentifierListNode identList = BuildIdentifierList(ssaPointerList);
+            ProtoCore.AST.AssociativeAST.IdentifierListNode identList = BuildAssociativeIdentifierList(ssaPointerList);
 
             // Comment Jun: perhaps this can be an assert?
             if (null != identList)
@@ -2919,26 +2927,53 @@ namespace ProtoCore
 
 
             // Handle static calls to reflect the original call
+            // TODO Jun: Refactor SSA code emitter to emit only after class definition pass
+            // This means that it is no longer necessary to breakdown an identifierlist that is a constructor or static call
+            bool isAssociative = node is ProtoCore.AST.AssociativeAST.IdentifierListNode;
             if (resolveStatic)
             {
-                ProtoCore.AST.AssociativeAST.IdentifierListNode identList = node as ProtoCore.AST.AssociativeAST.IdentifierListNode;
-                Validity.Assert(identList.LeftNode is ProtoCore.AST.AssociativeAST.IdentifierNode);
-
-                ProtoCore.AST.AssociativeAST.IdentifierNode leftNode = identList.LeftNode as ProtoCore.AST.AssociativeAST.IdentifierNode;
-                if (leftNode.Name != ProtoCore.DSDefinitions.Keyword.This)
+                // Handle associative nodes
+                // TODO Jun: Separate the EmitIdentifierListNode impl and they are now more distinct than initially designed
+                if (isAssociative)
                 {
-                    Validity.Assert(!string.IsNullOrEmpty(staticClass));
-                    identList.LeftNode = new ProtoCore.AST.AssociativeAST.IdentifierNode(staticClass);
+                    ProtoCore.AST.AssociativeAST.IdentifierListNode identList = node as ProtoCore.AST.AssociativeAST.IdentifierListNode;
+                    Validity.Assert(identList.LeftNode is ProtoCore.AST.AssociativeAST.IdentifierNode);
 
-                    staticClass = null;
-                    resolveStatic = false;
+                    ProtoCore.AST.AssociativeAST.IdentifierNode leftNode = identList.LeftNode as ProtoCore.AST.AssociativeAST.IdentifierNode;
+                    if (leftNode.Name != ProtoCore.DSDefinitions.Keyword.This)
+                    {
+                        Validity.Assert(!string.IsNullOrEmpty(staticClass));
+                        identList.LeftNode = new ProtoCore.AST.AssociativeAST.IdentifierNode(staticClass);
 
-                    ssaPointerList.Clear();
+                        staticClass = null;
+                        resolveStatic = false;
+
+                        ssaPointerList.Clear();
+                    }
+                }
+                else
+                {
+                    // handle imperative nodes 
+                    ProtoCore.AST.ImperativeAST.IdentifierListNode identList = node as ProtoCore.AST.ImperativeAST.IdentifierListNode;
+
+                    Validity.Assert(identList.LeftNode is ProtoCore.AST.ImperativeAST.IdentifierNode);
+
+                    ProtoCore.AST.ImperativeAST.IdentifierNode leftNode = identList.LeftNode as ProtoCore.AST.ImperativeAST.IdentifierNode;
+                    if (leftNode.Name != ProtoCore.DSDefinitions.Keyword.This)
+                    {
+                        Validity.Assert(!string.IsNullOrEmpty(staticClass));
+                        identList.LeftNode = new ProtoCore.AST.ImperativeAST.IdentifierNode(staticClass);
+
+                        staticClass = null;
+                        resolveStatic = false;
+
+                        ssaPointerList.Clear();
+                    }
                 }
             }
 
             BuildSSADependency(node, graphNode);
-            if (core.Options.FullSSA)
+            if (core.Options.FullSSA && isAssociative)
             {
                 BuildRealDependencyForIdentList(graphNode);
 

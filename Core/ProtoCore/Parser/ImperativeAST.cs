@@ -69,7 +69,7 @@ namespace ProtoCore.AST.ImperativeAST
 
     public class IdentifierNode : ArrayNameNode 
     {
-        public IdentifierNode()
+        public IdentifierNode(string identName = null)
         {
             ArrayDimensions = null;
             datatype = new ProtoCore.Type
@@ -79,6 +79,7 @@ namespace ProtoCore.AST.ImperativeAST
                 IsIndexable = false,
                 Name = null
             };
+            Value = Name = identName;
         }
 
 
