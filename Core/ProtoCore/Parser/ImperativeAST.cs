@@ -185,6 +185,12 @@ namespace ProtoCore.AST.ImperativeAST
             Type = null;
         }
 
+        public ArrayNode(ImperativeNode expr, ImperativeNode type)
+        {
+            Expr = expr;
+            Type = type;
+        }
+
         public ArrayNode(ArrayNode rhs)
             : base(rhs)
         {
@@ -338,16 +344,31 @@ namespace ProtoCore.AST.ImperativeAST
 
     public class BinaryExpressionNode : ImperativeNode
     {
+        public int exprUID { get; set; }
+        public bool isSSAPointerAssignment { get; set; }
         public ImperativeNode LeftNode { get; set; }
         public ProtoCore.DSASM.Operator Optr { get; set; }
         public ImperativeNode RightNode { get; set; }
 
         public BinaryExpressionNode()
         {
+            exprUID = ProtoCore.DSASM.Constants.kInvalidIndex;
+            isSSAPointerAssignment = false;
+        }
+
+        public BinaryExpressionNode(ImperativeNode left, ImperativeNode right, ProtoCore.DSASM.Operator optr)
+        {
+            exprUID = ProtoCore.DSASM.Constants.kInvalidIndex;
+            isSSAPointerAssignment = false;
+            this.LeftNode = left;
+            this.RightNode = right;
+            this.Optr = optr;
         }
 
         public BinaryExpressionNode(BinaryExpressionNode rhs) : base(rhs)
         {
+            exprUID = rhs.exprUID;
+            isSSAPointerAssignment = rhs.isSSAPointerAssignment;
             Optr = rhs.Optr;
             LeftNode = rhs.LeftNode == null ? null : ProtoCore.Utils.NodeUtils.Clone(rhs.LeftNode);
             RightNode = rhs.RightNode == null ? null : ProtoCore.Utils.NodeUtils.Clone(rhs.RightNode);
@@ -548,6 +569,7 @@ namespace ProtoCore.AST.ImperativeAST
 
     public class IdentifierListNode : ImperativeNode
     {
+        public bool isLastSSAIdentListFactor { get; set; }
         public ImperativeNode LeftNode { get; set; }
         public ProtoCore.DSASM.Operator Optr { get; set; }
         public ImperativeNode RightNode { get; set; }
